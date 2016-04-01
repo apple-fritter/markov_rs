@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 extern crate rand;
-use rand::{thread_rng, Rng, StdRng, SeedableRng};
+use rand::{thread_rng, Rng, XorShiftRng, SeedableRng};
 
 fn main() {
-    println!("Hello, world!");
 }
 
 fn parse(string: &str) -> HashMap<(&str, &str), Vec<&str>> {
@@ -31,11 +30,12 @@ fn parse(string: &str) -> HashMap<(&str, &str), Vec<&str>> {
     table
 }
 
-fn generate(string: &str, max_words: u32, seed: &[usize]) -> String {
+fn generate(string: &str, max_words: u32, seed: [u32; 4]) -> String {
     let table = parse(string);
 
-    let mut rng: StdRng = SeedableRng::from_seed(seed);
-    let possible_prefixes: Vec<&(&str, &str)> = table.keys().collect();
+    let mut rng: XorShiftRng = SeedableRng::from_seed(seed);
+    let mut possible_prefixes: Vec<&(&str, &str)> = table.keys().collect();
+    possible_prefixes.sort();
     let prefix: &(&str, &str) = rng.choose(&possible_prefixes).unwrap();
     let &(mut word1, mut word2) = prefix;
 
@@ -77,7 +77,7 @@ fn test_parse() {
 
 #[test]
 fn test_generate() {
-    let result = generate("I like cake. I like pie.", 3, &[1, 2, 3, 4]);
+    let result = generate("I like cake. I like pie.", 6, [13, 84, 433, 33]);
 
-    assert_eq!(result, "foo");
+    assert_eq!(result, "I like cake. I like cake.");
 }
