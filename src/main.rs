@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 extern crate rand;
-use rand::{thread_rng, Rng, XorShiftRng, StdRng, SeedableRng};
+use rand::{weak_rng, Rng, XorShiftRng, SeedableRng};
 use std::env;
 use std::io::{self, Read};
+use std::collections::HashMap;
 
 fn main() {
     let mut buffer = String::new();
@@ -11,7 +11,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let max_words: u32 = args[1].parse().unwrap();
-    let output: String = generate(&buffer, max_words, [1, 2, 3, 4]);
+    let output: String = generate(buffer.trim(), max_words, [0, 0, 0, 0]);
 
     println!("{}", output);
 }
@@ -44,7 +44,12 @@ fn parse(string: &str) -> HashMap<(&str, &str), Vec<&str>> {
 fn generate(string: &str, max_words: u32, seed: [u32; 4]) -> String {
     let table = parse(string);
 
-    let mut rng: XorShiftRng = SeedableRng::from_seed(seed);
+    let mut rng: XorShiftRng = if &seed == &[0, 0, 0, 0] {
+        weak_rng()
+    } else {
+        SeedableRng::from_seed(seed)
+    };
+
     let mut possible_prefixes: Vec<&(&str, &str)> = table.keys().collect();
     possible_prefixes.sort();
     let prefix: &(&str, &str) = rng.choose(&possible_prefixes).unwrap();
@@ -75,15 +80,6 @@ fn test_parse() {
     assert_eq!(table.get(&("I", "like")), Some(&vec!["cake.", "pie."]));
     assert_eq!(table.get(&("like", "cake.")), Some(&vec!["I"]));
     assert_eq!(table.get(&("cake.", "I")), Some(&vec!["like"]));
-
-   // assert_eq!(table.get(&("", "")), Some(&vec!["I"]));
-   // assert_eq!(table.get(&("", "I")), Some(&vec!["like"]));
-   // assert_eq!(table.get(&("I", "like")), Some(&vec!["pie.", "cake."]));
-   // assert_eq!(table.get(&("like", "cake.")), Some(&vec!["I"]));
-   // assert_eq!(table.get(&("cake.", "I")), Some(&vec!["like"]));
-
-    //assert_eq!(table.get(&(None, None)).unwrap().unwrap(), vec!["I"]);
-    //assert_eq!(table.get(&(None, Some("I"))).unwrap().unwrap(), vec!["like"]);
 }
 
 #[test]
