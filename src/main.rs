@@ -1,8 +1,19 @@
 use std::collections::HashMap;
 extern crate rand;
-use rand::{thread_rng, Rng, XorShiftRng, SeedableRng};
+use rand::{thread_rng, Rng, XorShiftRng, StdRng, SeedableRng};
+use std::env;
+use std::io::{self, Read};
 
 fn main() {
+    let mut buffer = String::new();
+    io::stdin().read_to_string(&mut buffer);
+
+    let args: Vec<String> = env::args().collect();
+
+    let max_words: u32 = args[1].parse().unwrap();
+    let output: String = generate(&buffer, max_words, [1, 2, 3, 4]);
+
+    println!("{}", output);
 }
 
 fn parse(string: &str) -> HashMap<(&str, &str), Vec<&str>> {
