@@ -1,5 +1,9 @@
 extern crate rand;
 use rand::{weak_rng, Rng, XorShiftRng, SeedableRng};
+
+extern crate regex;
+use regex::Regex;
+
 use std::env;
 use std::io::{self, Read};
 use std::collections::HashMap;
@@ -8,10 +12,13 @@ fn main() {
     let mut buffer = String::new();
     io::stdin().read_to_string(&mut buffer);
 
+    let re = Regex::new(r"[\r|\n]+").unwrap();
+    let input = re.replace_all(buffer.trim(), " ");
+
     let args: Vec<String> = env::args().collect();
 
-    let max_words: u32 = args[1].parse().unwrap();
-    let output: String = generate(buffer.trim(), max_words, [0, 0, 0, 0]);
+    let max_words: u32 = args[1].parse().expect("max_words argument could not be parsed as u32");
+    let output: String = generate(&input, max_words, [0, 0, 0, 0]);
 
     println!("{}", output);
 }
@@ -52,7 +59,7 @@ fn generate(string: &str, max_words: u32, seed: [u32; 4]) -> String {
 
     let mut possible_prefixes: Vec<&(&str, &str)> = table.keys().collect();
     possible_prefixes.sort();
-    let prefix: &(&str, &str) = rng.choose(&possible_prefixes).unwrap();
+    let prefix: &(&str, &str) = rng.choose(&possible_prefixes).expect("couldn't choose");
     let &(mut word1, mut word2) = prefix;
 
     let mut result = word1.to_string() + " " + word2;
