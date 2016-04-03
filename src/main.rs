@@ -1,19 +1,16 @@
 extern crate rand;
 use rand::{weak_rng, Rng, XorShiftRng, SeedableRng};
 
-extern crate regex;
-use regex::Regex;
-
 use std::env;
 use std::io::{self, Read};
 use std::collections::HashMap;
 
 fn main() {
-    let mut buffer = String::new();
-    io::stdin().read_to_string(&mut buffer);
-
-    let re = Regex::new(r"[\r|\n]+").unwrap();
-    let input = re.replace_all(buffer.trim(), " ");
+    let mut input = String::new();
+    match io::stdin().read_to_string(&mut input) {
+        Ok(_) => (),
+        Err(_) => panic!("couldn't read input"),
+    };
 
     let args: Vec<String> = env::args().collect();
 
@@ -26,7 +23,7 @@ fn main() {
 fn parse(string: &str) -> HashMap<(&str, &str), Vec<&str>> {
     let mut table: HashMap<(&str, &str), Vec<&str>> = HashMap::new();
 
-    let words: Vec<&str> = string.split(" ").collect();
+    let words = tokenize(string);
     let grouped_words = words.windows(3);
 
     for word_group in grouped_words {
@@ -59,7 +56,8 @@ fn generate(string: &str, max_words: u32, seed: [u32; 4]) -> String {
 
     let mut possible_prefixes: Vec<&(&str, &str)> = table.keys().collect();
     possible_prefixes.sort();
-    let prefix: &(&str, &str) = rng.choose(&possible_prefixes).expect("couldn't choose");
+    let prefix: &(&str, &str) = rng.choose(&possible_prefixes)
+        .expect("couldn't choose initial prefix");
     let &(mut word1, mut word2) = prefix;
 
     let mut result = word1.to_string() + " " + word2;
@@ -68,7 +66,7 @@ fn generate(string: &str, max_words: u32, seed: [u32; 4]) -> String {
         match table.get(&(word1, word2)) {
             Some(suffixes) => {
                 word1 = word2;
-                word2 = rng.choose(&suffixes).unwrap();
+                word2 = rng.choose(&suffixes).expect("couldn't choose suffix");
                 result = result + " " + word2;
             },
             None => {
@@ -78,6 +76,11 @@ fn generate(string: &str, max_words: u32, seed: [u32; 4]) -> String {
     }
 
     result
+}
+
+fn tokenize(string: &str) -> Vec<&str> {
+    let tokens: Vec<&str> = string.split_whitespace().collect();
+    tokens
 }
 
 #[test]
@@ -94,4 +97,10 @@ fn test_generate() {
     let result = generate("I like cake. I like pie.", 6, [13, 84, 433, 33]);
 
     assert_eq!(result, "I like cake. I like cake.");
+}
+
+#[test]
+fn test_tokenize() {
+    let tokens = tokenize("I like cake.\n\n I like\tpie.");
+    assert_eq!(tokens, vec!["I", "like", "cake.", "I", "like", "pie."]);
 }
