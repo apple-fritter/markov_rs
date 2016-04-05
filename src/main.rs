@@ -5,15 +5,28 @@ use std::env;
 use std::io::{self, Read};
 use std::collections::HashMap;
 
-struct MarkovTable<'a> {
-    table: HashMap<(&'a str, &'a str), Vec<&'a str>>,
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).expect("couldn't read input from standard in");
+
+    let args: Vec<String> = env::args().collect();
+
+    let max_words: u32 = args[1].parse().expect("max_words argument could not be parsed as u32");
+
+    let output: String = MarkovChainTable::new(input).generate(max_words);
+
+    println!("{}", output);
+}
+
+struct MarkovChainTable {
+    text: String,
     seed: Option<[u32; 4]>,
 }
 
-impl<'a> MarkovTable<'a> {
-   fn new(string: &str) -> MarkovTable {
-        MarkovTable {
-            table: MarkovTable::parse(string),
+impl MarkovChainTable {
+   fn new(text: String) -> MarkovChainTable {
+        MarkovChainTable {
+            text: text,
             seed: None,
         }
     }
@@ -26,7 +39,7 @@ impl<'a> MarkovTable<'a> {
     fn parse(string: &str) -> HashMap<(&str, &str), Vec<&str>> {
         let mut table: HashMap<(&str, &str), Vec<&str>> = HashMap::new();
 
-        let words = MarkovTable::tokenize(string);
+        let words = MarkovChainTable::tokenize(string);
         let grouped_words = words.windows(3);
 
         for word_group in grouped_words {
@@ -48,7 +61,7 @@ impl<'a> MarkovTable<'a> {
         table
     }
 
-    fn seed(&'a mut self, seed: [u32; 4]) -> &'a mut MarkovTable {
+    fn seed(&mut self, seed: [u32; 4]) -> &mut MarkovChainTable {
         self.seed = Some(seed);
         self
     }
@@ -61,7 +74,7 @@ impl<'a> MarkovTable<'a> {
     }
 
     fn generate(&mut self, max_words: u32) -> String {
-        let table = &self.table;
+        let table = MarkovChainTable::parse(&self.text);
         let mut rng = self.rng();
 
         let mut possible_prefixes: Vec<&(&str, &str)> = table.keys().collect();
@@ -89,22 +102,9 @@ impl<'a> MarkovTable<'a> {
     }
 }
 
-fn main() {
-    let mut input = String::new();
-    io::stdin().read_to_string(&mut input).expect("couldn't read input from standard in");
-
-    let args: Vec<String> = env::args().collect();
-
-    let max_words: u32 = args[1].parse().expect("max_words argument could not be parsed as u32");
-
-    let output: String = MarkovTable::new(&input).generate(max_words);
-
-    println!("{}", output);
-}
-
 #[test]
 fn test_parse() {
-    let table = MarkovTable::parse("I like cake. I like pie.");
+    let table = MarkovChainTable::parse("I like cake. I like pie.");
 
     assert_eq!(table.get(&("I", "like")), Some(&vec!["cake.", "pie."]));
     assert_eq!(table.get(&("like", "cake.")), Some(&vec!["I"]));
@@ -113,7 +113,7 @@ fn test_parse() {
 
 #[test]
 fn test_generate() {
-    let mut mtable = MarkovTable::new("I like cake. I like pie");
+    let mut mtable = MarkovChainTable::new("I like cake. I like pie".to_string());
     let result = mtable.seed([13, 84, 433, 33]).generate(6);
 
     assert_eq!(result, "I like cake. I like cake.");
@@ -121,6 +121,6 @@ fn test_generate() {
 
 #[test]
 fn test_tokenize() {
-    let tokens = MarkovTable::tokenize("I like cake.\n\n I like\tpie.");
+    let tokens = MarkovChainTable::tokenize("I like cake.\n\n I like\tpie.");
     assert_eq!(tokens, vec!["I", "like", "cake.", "I", "like", "pie."]);
 }
