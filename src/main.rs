@@ -7,12 +7,14 @@ use std::collections::HashMap;
 
 struct MarkovTable<'a> {
     table: HashMap<(&'a str, &'a str), Vec<&'a str>>,
+    seed: Option<[u32; 4]>,
 }
 
 impl<'a> MarkovTable<'a> {
-    fn new(string: &str) -> MarkovTable {
+   fn new(string: &str) -> MarkovTable {
         MarkovTable {
             table: MarkovTable::parse(string),
+            seed: None,
         }
     }
 
@@ -46,14 +48,21 @@ impl<'a> MarkovTable<'a> {
         table
     }
 
-    fn generate(&self, max_words: u32, seed: [u32; 4]) -> String {
-        let table = &self.table;
+    fn seed(&'a mut self, seed: [u32; 4]) -> &'a mut MarkovTable {
+        self.seed = Some(seed);
+        self
+    }
 
-        let mut rng: XorShiftRng = if &seed == &[0, 0, 0, 0] {
-            weak_rng()
-        } else {
-            SeedableRng::from_seed(seed)
-        };
+    fn rng(&self) -> XorShiftRng {
+        match &self.seed {
+            &Some(seed) => SeedableRng::from_seed(seed),
+            &None => weak_rng(),
+        }
+    }
+
+    fn generate(&mut self, max_words: u32) -> String {
+        let table = &self.table;
+        let mut rng = self.rng();
 
         let mut possible_prefixes: Vec<&(&str, &str)> = table.keys().collect();
         possible_prefixes.sort();
@@ -82,17 +91,13 @@ impl<'a> MarkovTable<'a> {
 
 fn main() {
     let mut input = String::new();
-    match io::stdin().read_to_string(&mut input) {
-        Ok(_) => (),
-        Err(_) => panic!("couldn't read input"),
-    };
+    io::stdin().read_to_string(&mut input).expect("couldn't read input from standard in");
 
     let args: Vec<String> = env::args().collect();
 
     let max_words: u32 = args[1].parse().expect("max_words argument could not be parsed as u32");
 
-    let mtable: MarkovTable = MarkovTable::new(&input);
-    let output: String = mtable.generate(max_words, [0, 0, 0, 0]);
+    let output: String = MarkovTable::new(&input).generate(max_words);
 
     println!("{}", output);
 }
@@ -108,8 +113,8 @@ fn test_parse() {
 
 #[test]
 fn test_generate() {
-    let mtable = MarkovTable::new("I like cake. I like pie");
-    let result = mtable.generate(6, [13, 84, 433, 33]);
+    let mut mtable = MarkovTable::new("I like cake. I like pie");
+    let result = mtable.seed([13, 84, 433, 33]).generate(6);
 
     assert_eq!(result, "I like cake. I like cake.");
 }
